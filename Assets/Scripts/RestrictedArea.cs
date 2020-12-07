@@ -24,8 +24,7 @@ public class RestrictedArea : MonoBehaviour
             {
                 IncreaseVolume();
             }
-
-            if (!_volumeIsMin)
+            else
             {
                 DecreaseVolume();
             }
