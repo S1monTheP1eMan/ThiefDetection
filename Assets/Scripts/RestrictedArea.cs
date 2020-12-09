@@ -9,11 +9,17 @@ public class RestrictedArea : MonoBehaviour
     private AudioSource _audioSource;
     private bool _isInside;
     private bool _volumeIsMin;
+    private bool _volumeIsMax;
+    private float _runningTime;
+    private IEnumerator _increaseVolume;
+    private IEnumerator _decreaseVolume;
 
     private void Awake()
     {
         _audioSource = GetComponentInChildren<AudioSource>();
         _isInside = false;
+        _volumeIsMin = true;
+        _volumeIsMax = false;
     }
 
     private void Update()
@@ -22,32 +28,87 @@ public class RestrictedArea : MonoBehaviour
         {
             if (_volumeIsMin)
             {
-                IncreaseVolume();
+                _volumeIsMin = false;
+
+                StartIncreaseVolume();
             }
-            else
+
+            if (_volumeIsMax)
             {
-                DecreaseVolume();
+                _volumeIsMax = false;
+
+                StartDecreaseVolume();
             }
         }
     }
 
-    private void IncreaseVolume()
+    private void StartIncreaseVolume()
     {
-        _audioSource.volume += Time.deltaTime / _duration;
-
-        if (_audioSource.volume == 1)
+        if (_decreaseVolume != null)
         {
-            _volumeIsMin = false;
+            StopCoroutine(DecreaseVolume());
+        }
+
+        _increaseVolume = IncreaseVolume();
+        StartCoroutine(_increaseVolume);
+    }
+
+    private void StartDecreaseVolume()
+    {
+        if (_increaseVolume != null)
+        {
+            StopCoroutine(IncreaseVolume());
+        }
+
+        _decreaseVolume = DecreaseVolume();
+        StartCoroutine(_decreaseVolume);
+    }
+
+    private IEnumerator IncreaseVolume()
+    {
+        var waitUntil = new WaitUntil(() => _isInside == true);
+        var volume = _audioSource.volume;
+
+        for (_runningTime = 0; _runningTime <= _duration; _runningTime += Time.deltaTime)
+        {
+            volume = 0f + (1f / _duration * _runningTime);
+            _audioSource.volume = volume;
+
+            if (_audioSource.volume >= 0.99f)
+            {
+                _volumeIsMax = true;
+                yield break;
+            }
+            else if (_isInside == false)
+            {
+                yield return waitUntil;
+            }
+
+            yield return null;
         }
     }
 
-    private void DecreaseVolume()
+    private IEnumerator DecreaseVolume()
     {
-        _audioSource.volume -= Time.deltaTime / _duration;
+        var waitUntil = new WaitUntil(() => _isInside == true);
+        var volume = _audioSource.volume;
 
-        if (_audioSource.volume == 0)
+        for (_runningTime = 0; _runningTime <= _duration; _runningTime += Time.deltaTime)
         {
-            _volumeIsMin = true;
+            volume = 1f - (1f / _duration * _runningTime);
+            _audioSource.volume = volume;
+
+            if (_audioSource.volume <= 0.01f)
+            {
+                _volumeIsMin = true;
+                yield break;
+            }
+            else if (_isInside == false)
+            {
+                yield return waitUntil;
+            }
+
+            yield return null;
         }
     }
 
